@@ -657,7 +657,7 @@ syscall:
 	ret.l
 context4ct:	.equ 0d10000h
 context:	.equ 0d10100h
-contextcount:	.equ 0d12200h
+contextcount:	.equ 0d18100h
 ; add_tsk -- void add_tsk(void* newstack);
 syscall_add_tsk:
 	di
@@ -669,7 +669,7 @@ syscall_add_tsk:
 	ld a,(contextcount)
 syscall_add_tsk_:
 	inc a
-	ld e,33
+	ld e,128
 	ld d,a
 	ld (contextcount),a
 	mlt de
@@ -694,7 +694,7 @@ syscall_ter_tsk:
 	ld (contextcount+(3*1)),hl
 	ld a,l
 syscall_ter_tsk_:
-	ld e,33
+	ld e,128
 	ld d,a
 	mlt de
 	ld hl,context+(3*10)
@@ -744,9 +744,13 @@ interrupthandler:
 	ld.lil (context4ct+(3*9)),hl
 	ld a,mb
 	ld.lil (context4ct+((3*9)+2)),a
+	ld.lil a,(context4ct+(3*10))
+	bit 1,a
+	jp nz,cs_pagein
 ;backup current context
-	ld bc,33
-	ld e,33
+backupcontext:
+	ld bc,128
+	ld e,128
 	ld a,(contextcount)
 	ld d,a
 	inc a
@@ -764,8 +768,8 @@ contextloop:
 	ld hl,0
 	ld (context4ct+(3*10)),hl
 	ld (contextcount),a
-	ld bc,33
-	ld e,33
+	ld bc,128
+	ld e,128
 	ld a,(contextcount)
 	ld d,a
 	mlt de
@@ -781,6 +785,9 @@ contextloop:
 	jr z,contextloop
 ;restore context
 nextcontextload:
+	bit 1,b
+	jp nz,cs_pageout
+nextcontextload_:
 	ld.lil a,(context4ct+((3*9)+2))
 	ld mb,a
 	ld.lil sp,(context4ct+(3*8))
@@ -805,6 +812,49 @@ nextcontextload:
 	exx
 	ei
 	reti.l
+cs_pageout:
+	in0 a,(06h)
+	ld (context4ct+(3*10)+1),a
+	set 2,a
+	out0 (06h),a
+	ld hl,cs_pageout_
+	jp unlockthememory
+cs_pageout_:
+	ld hl,(context4ct+(3*11))
+	ld de,0d00000h
+	ld bc,65536
+	ldir
+	ld a,(context4ct+(3*10)+1)
+	out0 (06h),a
+	jp nextcontextload_
+cs_pagein_:
+	in0 a,(06h)
+	ld (context4ct+(3*10)+1),a
+	set 2,a
+	out0 (06h),a
+	ld hl,cs_pagein_
+	jp unlockthememory
+cs_pagein:
+	ld hl,0d00000h
+	ld de,(context4ct+(3*11))
+	ld bc,65536
+	ldir
+	ld a,(context4ct+(3*10)+1)
+	out0 (06h),a
+	jp backupcontext
+unlockthememory:
+	di
+	jr unlockthememory_
+unlockthememory_:
+	di
+	di
+	rsmix
+	im 1
+	out0 (028h),a
+	in0 a,(028h)
+	bit 2,a
+	stmix
+	jp (hl)
 nmihandler:
 	di
 	ei
