@@ -621,6 +621,7 @@ initkernel:
 	ld hl,(execaddr4initprg)
 	ei
 	
+	jp (hl)
 lplp:	jr lplp
 spicommunticate_:
 	or a,a
