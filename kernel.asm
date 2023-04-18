@@ -10,8 +10,14 @@
 	di
 	nop
 	jp.lil interrupthandler
+	.fill (066h-$)
+	ld.lil hl,(execaddr4initprg+3)
+	jp.lil (hl)
 	.fill (0100h-$)
 .assume ADL=1
+execaddr4initprg:
+	.dl lplp
+	.dl nmihandler
 initkernel:
 	ld sp,0d40000h
 	ld hl,0182Bh
@@ -609,6 +615,10 @@ initkernel:
 	xor a,a
 	set 0,a
 	ld (context4ct+(3*10)),a
+	xor a,a
+	ld (contextcount),a
+	im 1
+	ld hl,(execaddr4initprg)
 	ei
 	
 lplp:	jr lplp
@@ -666,6 +676,7 @@ syscall_add_tsk_:
 	add hl,de
 	ld a,(hl)
 	bit 0,a
+	ld a,(contextcount)
 	jr nz,syscall_add_tsk_
 	set 0,a
 	ld (hl),a
@@ -749,6 +760,8 @@ interrupthandler:
 	ld a,(contextcount)
 ;read next context
 contextloop:
+	ld hl,0
+	ld (context4ct+(3*10)),hl
 	ld (contextcount),a
 	ld bc,33
 	ld e,33
@@ -789,5 +802,9 @@ nextcontextload:
 	ld.lil hl,(context4ct+(3*6))
 	ex af,af'
 	exx
+	ei
+	reti.l
+nmihandler:
+	di
 	ei
 	reti.l
