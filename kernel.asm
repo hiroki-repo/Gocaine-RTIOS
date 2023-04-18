@@ -8,7 +8,7 @@
 	jp.lil syscall
 	.fill (038H-$)
 	di
-	rsmix
+	nop
 	jp.lil interrupthandler
 	.fill (0100h-$)
 .assume ADL=1
