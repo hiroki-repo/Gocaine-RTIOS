@@ -640,6 +640,7 @@ syscall:
 	cp a,1
 	jp z,syscall_ter_tsk
 	ld hl,-1
+	ei
 	ret.l
 context4ct:	.equ 0d10000h
 context:	.equ 0d10100h
