@@ -639,6 +639,8 @@ syscall:
 	jp z,syscall_add_tsk
 	cp a,1
 	jp z,syscall_ter_tsk
+	cp a,2
+	jp z,syscall_get_tskid
 	ld hl,-1
 	ei
 	ret.l
@@ -680,7 +682,6 @@ syscall_ter_tsk:
 	ld (contextcount+(3*1)),hl
 	ld a,l
 syscall_ter_tsk_:
-	inc a
 	ld e,33
 	ld d,a
 	mlt de
@@ -696,6 +697,14 @@ syscall_ter_tsk_:
 	ret.l
 syscall_ter_tsk_err:
 	ld hl,-1
+	ei
+	ret.l
+
+; get_tskid -- UINT8 get_tskid(void);
+syscall_get_tskid:
+	ld hl,0
+	ld a,(contextcount)
+	ld l,a
 	ei
 	ret.l
 
@@ -781,4 +790,4 @@ nextcontextload:
 	ex af,af'
 	exx
 	ei
-	reti
+	reti.l
