@@ -4,7 +4,7 @@
 	rsmix
 	jp.lil initkernel
 	di
-	rsmix
+	nop
 	jp.lil syscall
 	.fill (038H-$)
 	di
