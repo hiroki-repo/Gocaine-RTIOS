@@ -709,6 +709,7 @@ syscall_ter_tsk_:
 	bit 0,a
 	jr z,syscall_ter_tsk_err
 	res 0,a
+	res 1,a
 	ld (hl),a
 	ld hl,0
 	ld ix,(contextcount+(3*2))
