@@ -652,6 +652,8 @@ syscall:
 	jp z,syscall_ter_tsk
 	cp a,2
 	jp z,syscall_get_tskid
+	cp a,3
+	jp z,syscall_flashaccess
 	ld hl,-1
 	ei
 	ret.l
@@ -682,6 +684,7 @@ syscall_add_tsk_:
 	set 0,a
 	ld (hl),a
 	ld sp,(contextcount+(3*1))
+	ld (context4ct+(3*8)),sp
 	ld ix,(contextcount+(3*2))
 	jp nextcontextload
 ; ter_tsk -- UINT24 ter_tsk(UINT8 taskid);
@@ -705,10 +708,12 @@ syscall_ter_tsk_:
 	res 0,a
 	ld (hl),a
 	ld hl,0
+	ld ix,(contextcount+(3*2))
 	ei
 	ret.l
 syscall_ter_tsk_err:
 	ld hl,-1
+	ld ix,(contextcount+(3*2))
 	ei
 	ret.l
 
@@ -717,6 +722,34 @@ syscall_get_tskid:
 	ld hl,0
 	ld a,(contextcount)
 	ld l,a
+	ei
+	ret.l
+
+;read -- used from assembly
+syscall_flashaccess:
+	di
+	in0 a,(06h)
+	ld (context4ct+(3*10)+1),a
+	set 2,a
+	out0 (06h),a
+	ld a,0ffh
+
+	di
+	jr syscall_flashaccess_
+syscall_flashaccess_:
+	di
+	di
+	rsmix
+	im 1
+	out0 (028h),a
+	in0 a,(028h)
+	bit 2,a
+	stmix
+
+	ldir
+	ld a,(context4ct+(3*10)+1)
+	out0 (06h),a
+	ld hl,0
 	ei
 	ret.l
 
@@ -827,14 +860,14 @@ cs_pageout_:
 	ld a,(context4ct+(3*10)+1)
 	out0 (06h),a
 	jp nextcontextload_
-cs_pagein_:
+cs_pagein:
 	in0 a,(06h)
 	ld (context4ct+(3*10)+1),a
 	set 2,a
 	out0 (06h),a
 	ld hl,cs_pagein_
 	jp unlockthememory
-cs_pagein:
+cs_pagein_:
 	ld hl,0d00000h
 	ld de,(context4ct+(3*11))
 	ld bc,65536
@@ -843,6 +876,8 @@ cs_pagein:
 	out0 (06h),a
 	jp backupcontext
 unlockthememory:
+	ld a,0ffh
+
 	di
 	jr unlockthememory_
 unlockthememory_:
