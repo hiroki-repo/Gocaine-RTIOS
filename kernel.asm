@@ -725,7 +725,7 @@ syscall_get_tskid:
 	ei
 	ret.l
 
-;read -- used from assembly
+;flashaccess -- used from assembly
 syscall_flashaccess:
 	di
 	in0 a,(06h)
