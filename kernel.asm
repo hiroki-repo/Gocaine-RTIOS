@@ -654,6 +654,8 @@ syscall:
 	jp z,syscall_get_tskid
 	cp a,3
 	jp z,syscall_flashaccess
+	cp a,4
+	jp z,syscall_add_tsk_new
 	ld hl,-1
 	ei
 	ret.l
@@ -668,6 +670,7 @@ syscall_add_tsk:
 	add ix,sp
 	ld hl,(ix+((3*1)+(4)))
 	ld (contextcount+(3*1)),hl
+	call backupthecurrentcontext
 	ld a,(contextcount)
 syscall_add_tsk_:
 	inc a
@@ -752,6 +755,92 @@ syscall_flashaccess_:
 	ld hl,0
 	ei
 	ret.l
+
+; add_tsk_new -- void add_tsk_new(void* newstack,bool pagingenable);
+syscall_add_tsk_new:
+	di
+	ld (contextcount+(3*2)),ix
+	ld ix,0
+	add ix,sp
+	ld hl,(ix+((3*1)+(4)))
+	ld (contextcount+(3*1)),hl
+	ld hl,(ix+((3*2)+(4)))
+	ld (contextcount+(3*3)),hl
+	call backupthecurrentcontext
+	ld a,(contextcount)
+syscall_add_tsk_new_:
+	inc a
+	ld e,128
+	ld d,a
+	ld (contextcount),a
+	mlt de
+	ld hl,context+(3*10)
+	add hl,de
+	ld a,(hl)
+	bit 0,a
+	ld a,(contextcount)
+	jr nz,syscall_add_tsk_new_
+	set 0,a
+	ld (hl),a
+	ld sp,(contextcount+(3*1))
+	ld (context4ct+(3*8)),sp
+	ld hl,(contextcount+(3*3))
+	bit 0,l
+	jr nz,syscall_add_tsk_new__
+	ld a,(context4ct+(3*10))
+	or a,1
+	ld (context4ct+(3*10)),a
+	ld ix,(contextcount+(3*2))
+	jp nextcontextload
+syscall_add_tsk_new__:
+	ld a,(context4ct+(3*10))
+	or a,3
+	ld (context4ct+(3*10)),a
+	ld ix,(contextcount+(3*2))
+	jp nextcontextload
+
+backupthecurrentcontext:
+	ld.lil (context4ct+(3*0)),bc
+	ld.lil (context4ct+(3*1)),de
+	ld.lil (context4ct+(3*2)),hl
+	push af
+	pop hl
+	ld.lil (context4ct+(3*3)),hl
+	ex af,af'
+	exx
+	ld.lil (context4ct+(3*4)),bc
+	ld.lil (context4ct+(3*5)),de
+	ld.lil (context4ct+(3*6)),hl
+	push af
+	pop hl
+	ld.lil (context4ct+(3*7)),hl
+	ex af,af'
+	exx
+	ld.lil (context4ct+(3*8)),sp
+	ld hl,0
+	add.sis hl,sp
+	ld.lil (context4ct+(3*9)),hl
+	ld a,mb
+	ld.lil (context4ct+((3*9)+2)),a
+	ld.lil a,(context4ct+(3*10))
+	bit 1,a
+	jp nz,cs_pagein_bc
+;backup current context
+backupcontext_bc:
+	ld bc,128
+	ld e,128
+	ld a,(contextcount)
+	ld d,a
+	inc a
+	ld (contextcount),a
+	mlt de
+	ld hl,context
+	add hl,de
+	ex de,hl
+	ld hl,context4ct
+	ldir
+	ex de,hl
+	ret
 
 interrupthandler:
 	di
@@ -875,6 +964,24 @@ cs_pagein_:
 	ld a,(context4ct+(3*10)+1)
 	out0 (06h),a
 	jp backupcontext
+
+cs_pagein_bc:
+	in0 a,(06h)
+	ld (context4ct+(3*10)+1),a
+	set 2,a
+	out0 (06h),a
+	ld hl,cs_pagein_bc_
+	jp unlockthememory
+cs_pagein_bc_:
+	ld hl,0d00000h
+	ld de,(context4ct+(3*11))
+	ld bc,65536
+	ldir
+	ld a,(context4ct+(3*10)+1)
+	out0 (06h),a
+	jp backupcontext_bc
+
+
 unlockthememory:
 	ld a,0ffh
 
